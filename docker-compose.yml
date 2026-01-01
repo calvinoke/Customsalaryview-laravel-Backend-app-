@@ -38,10 +38,10 @@ services:
     container_name: laravel_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}  # matches workflow
-      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-      MYSQL_USER: ${{ secrets.MYSQL_USER }}
-      MYSQL_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+      MYSQL_ROOT_PASSWORD: secret      # root password
+      MYSQL_DATABASE: laravel          # database name
+      MYSQL_USER: laravel              # database user
+      MYSQL_PASSWORD: secret           # user password
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
