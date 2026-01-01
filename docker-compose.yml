@@ -1,3 +1,4 @@
+version: "3.8"
 
 services:
   app:
@@ -9,7 +10,7 @@ services:
     volumes:
       - .:/var/www
     env_file:
-      - .env
+      - .env   # <-- reads the same .env created by GitHub Actions
     depends_on:
       - mysql
     networks:
@@ -36,11 +37,8 @@ services:
     image: mysql:8
     container_name: laravel_mysql
     restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: secretroot
-      MYSQL_DATABASE: laravel
-      MYSQL_USER: laravel
-      MYSQL_PASSWORD: secret
+    env_file:
+      - .env   # <-- reads DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD from .env
     volumes:
       - mysql_data:/var/lib/mysql
     networks:

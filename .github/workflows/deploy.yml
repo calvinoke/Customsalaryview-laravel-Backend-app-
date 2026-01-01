@@ -23,8 +23,10 @@ jobs:
             set -e
             cd /home/ec2-user/apps/laravel-app
 
+            # Pull latest code
             git pull origin main
 
+            # Write .env dynamically from GitHub Secrets
             echo "Writing .env"
             cat <<EOF > .env
 APP_ENV=production
@@ -40,8 +42,10 @@ DB_USERNAME=${{ secrets.PROD_DB_USER }}
 DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
 EOF
 
-            docker compose down
+            # Recreate Docker containers
+            docker compose down -v
             docker compose up -d --build
 
+            # Run Laravel migrations and optimizations
             docker exec laravel_app php artisan migrate --force
             docker exec laravel_app php artisan optimize
