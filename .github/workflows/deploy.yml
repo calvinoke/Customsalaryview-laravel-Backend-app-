@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-<<<<<<< HEAD
 
 jobs:
   deploy:
@@ -14,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Blue–Green Deploy to EC2
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -22,25 +21,11 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-
-            APP_DIR=/home/ec2-user/apps/laravel-app
-            cd $APP_DIR
-
-            echo "🚀 Starting Blue–Green deployment"
-
-            # Detect active color
-            ACTIVE_COLOR=$(cat active_color.txt 2>/dev/null || echo blue)
-            if [ "$ACTIVE_COLOR" = "blue" ]; then
-              NEW_COLOR=green
-            else
-              NEW_COLOR=blue
-            fi
-
-            echo "🔵 Active: $ACTIVE_COLOR → 🟢 New: $NEW_COLOR"
+            cd /home/ec2-user/apps/laravel-app
 
             git pull origin main
 
-            echo "🧾 Writing .env..."
+            echo "Writing .env"
             cat <<EOF > .env
 APP_ENV=production
 APP_DEBUG=false
@@ -55,55 +40,8 @@ DB_USERNAME=${{ secrets.PROD_DB_USER }}
 DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
 EOF
 
-            echo "🐳 Building $NEW_COLOR stack..."
-            docker compose -f docker-compose.$NEW_COLOR.yml up -d --build
+            docker compose down
+            docker compose up -d --build
 
-            echo "🧪 Running migrations..."
-            docker exec laravel_app_$NEW_COLOR php artisan migrate --force
-
-            echo "❤️ Health check..."
-            for i in {1..10}; do
-              if curl -sf http://localhost/health; then
-                echo "✅ App healthy"
-                break
-              fi
-              sleep 3
-            done
-
-            if ! curl -sf http://localhost/health; then
-              echo "❌ Health check failed → rollback"
-              docker compose -f docker-compose.$NEW_COLOR.yml down
-              exit 1
-            fi
-
-            echo "🔁 Switching traffic to $NEW_COLOR"
-            sed -i "s/laravel_app_$ACTIVE_COLOR/laravel_app_$NEW_COLOR/g" docker/nginx/upstream.conf
-            docker exec laravel_nginx nginx -s reload
-
-            echo "$NEW_COLOR" > active_color.txt
-
-            echo "🧹 Stopping old stack..."
-            docker compose -f docker-compose.$ACTIVE_COLOR.yml down
-
-            echo "🎉 Deployment complete"
-=======
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          cd ~/apps/laravel-app
-          git pull origin main
-          docker-compose down
-          docker-compose up -d --build
-          docker exec laravel_app php artisan migrate --force
-          docker exec laravel_app php artisan optimize
->>>>>>> 4b5f9d3159b9bd7cc90a63ce1b320ead7ecbebaf
+            docker exec laravel_app php artisan migrate --force
+            docker exec laravel_app php artisan optimize
