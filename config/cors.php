@@ -6,7 +6,7 @@ return [
     |--------------------------------------------------------------------------
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
-    |
+          |
     | Here you may configure your settings for cross-origin resource sharing
     | or "CORS". This determines what cross-origin operations may execute
     | in web browsers. You are free to adjust these settings as needed.
@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000','http://localhost:8000'],
+    'allowed_origins' => ['http://localhost:3000','https://ec2-16-170-163-154.eu-north-1.compute.amazonaws.com','http://localhost:8000'],
 
 
     'allowed_origins_patterns' => [],

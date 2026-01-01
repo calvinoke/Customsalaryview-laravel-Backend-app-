@@ -21,6 +21,10 @@ Route::get('/', function () {
 });
 
 
+Route::get('/health', fn () => response('OK', 200));
+
+
+
 
 Route::get('/sanctum/csrf-cookie', [CsrfCookieController::class, 'show'])->middleware('web');
 
