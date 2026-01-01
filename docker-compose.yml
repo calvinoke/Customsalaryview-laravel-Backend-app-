@@ -1,4 +1,4 @@
-version: "3.8"
+version: "3.8"  # optional, can remove as it's deprecated
 
 services:
   app:
@@ -10,7 +10,7 @@ services:
     volumes:
       - .:/var/www
     env_file:
-      - .env   # <-- reads the same .env created by GitHub Actions
+      - .env   # Laravel reads DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD
     depends_on:
       - mysql
     networks:
@@ -37,8 +37,11 @@ services:
     image: mysql:8
     container_name: laravel_mysql
     restart: unless-stopped
-    env_file:
-      - .env   # <-- reads DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD from .env
+    environment:
+      MYSQL_ROOT_PASSWORD: secret            # must match DB_PASSWORD in .env
+      MYSQL_DATABASE: laravel                # must match DB_DATABASE in .env
+      MYSQL_USER: laravel                    # must match DB_USERNAME in .env
+      MYSQL_PASSWORD: secret                 # must match DB_PASSWORD in .env
     volumes:
       - mysql_data:/var/lib/mysql
     networks:

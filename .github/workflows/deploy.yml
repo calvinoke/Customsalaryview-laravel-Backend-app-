@@ -37,9 +37,9 @@ APP_URL=${{ secrets.PROD_APP_URL }}
 DB_CONNECTION=mysql
 DB_HOST=${{ secrets.PROD_DB_HOST }}
 DB_PORT=3306
-DB_DATABASE=${{ secrets.PROD_DB_NAME }}
-DB_USERNAME=${{ secrets.PROD_DB_USER }}
-DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+DB_DATABASE=${{ secrets.MYSQL_DATABASE }}
+DB_USERNAME=${{ secrets.MYSQL_USER }}
+DB_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
 EOF
 
             # Recreate Docker containers
