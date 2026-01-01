@@ -1,4 +1,4 @@
-version: "3.8"  # optional, can remove as it's deprecated
+version: "3.8"
 
 services:
   app:
@@ -10,7 +10,7 @@ services:
     volumes:
       - .:/var/www
     env_file:
-      - .env   # Laravel reads DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD
+      - .env
     depends_on:
       - mysql
     networks:
@@ -38,10 +38,10 @@ services:
     container_name: laravel_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: secret            # must match DB_PASSWORD in .env
-      MYSQL_DATABASE: laravel                # must match DB_DATABASE in .env
-      MYSQL_USER: laravel                    # must match DB_USERNAME in .env
-      MYSQL_PASSWORD: secret                 # must match DB_PASSWORD in .env
+      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}  # matches workflow
+      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
