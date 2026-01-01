@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000','https://ec2-16-170-163-154.eu-north-1.compute.amazonaws.com','http://localhost:8000'],
+    'allowed_origins' => ['https://customsalaryview-nextjs-app.vercel.app','http://ec2-16-170-163-154.eu-north-1.compute.amazonaws.com','http://localhost:8000'],
 
 
     'allowed_origins_patterns' => [],
