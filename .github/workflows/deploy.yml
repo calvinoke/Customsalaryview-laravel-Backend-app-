@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2
+      - name: Deploy to EC2 (Blue/Green + DB restore + Prometheus)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -21,31 +21,103 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            cd /home/ec2-user/apps/laravel-app
+            cd /home/ec2-user/apps
 
-            # Pull latest code
-            git pull origin main
+            ############################################
+            # 1️⃣ Identify active & idle environments
+            ############################################
+            ACTIVE=$(readlink laravel-current | sed 's/laravel-//')
+            if [ "$ACTIVE" = "blue" ]; then
+              IDLE="green"
+            else
+              IDLE="blue"
+            fi
 
-            # Write .env dynamically from GitHub Secrets
-            echo "Writing .env"
-            cat <<EOF > .env
-APP_ENV=production
-APP_DEBUG=false
-APP_KEY=${{ secrets.PROD_APP_KEY }}
-APP_URL=${{ secrets.PROD_APP_URL }}
+            echo "🟢 Active: $ACTIVE | 🔵 Deploying: $IDLE"
 
-DB_CONNECTION=mysql
-DB_HOST=${{ secrets.PROD_DB_HOST }}
-DB_PORT=3306
-DB_DATABASE=${{ secrets.MYSQL_DATABASE }}
-DB_USERNAME=${{ secrets.MYSQL_USER }}
-DB_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-EOF
+            ############################################
+            # 2️⃣ Prepare DB backup + rollback
+            ############################################
+            BACKUP_DIR="/home/ec2-user/db_backups"
+            BACKUP_FILE="$BACKUP_DIR/db_$(date +%F_%H-%M-%S).sql"
+            mkdir -p $BACKUP_DIR
 
-            # Recreate Docker containers
-            docker compose down -v
-            docker compose up -d --build
+            restore_db() {
+              echo "❌ Failure detected — restoring database"
+              docker exec laravel_${IDLE}_db mysql \
+                -u${{ secrets.MYSQL_USER }} \
+                -p${{ secrets.MYSQL_ROOT_PASSWORD }} \
+                ${{ secrets.MYSQL_DATABASE }} < $BACKUP_FILE || true
 
-            # Run Laravel migrations and optimizations
-            docker exec laravel_app php artisan migrate --force
-            docker exec laravel_app php artisan optimize
+              echo "↩️ Traffic remains on $ACTIVE"
+              docker compose -p laravel_$IDLE down || true
+              exit 1
+            }
+
+            trap restore_db ERR
+
+            ############################################
+            # 3️⃣ Update idle environment code
+            ############################################
+            cd laravel-$IDLE
+            git fetch origin
+            git reset --hard origin/main
+
+            ############################################
+            # 4️⃣ Write .env
+            ############################################
+            cat > .env << 'EOF'
+            APP_ENV=production
+            APP_DEBUG=false
+            APP_KEY=${{ secrets.PROD_APP_KEY }}
+            APP_URL=${{ secrets.PROD_APP_URL }}
+
+            DB_CONNECTION=mysql
+            DB_HOST=${{ secrets.PROD_DB_HOST }}
+            DB_PORT=3306
+            DB_DATABASE=${{ secrets.MYSQL_DATABASE }}
+            DB_USERNAME=${{ secrets.MYSQL_USER }}
+            DB_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+            EOF
+
+            ############################################
+            # 5️⃣ Build idle containers
+            ############################################
+            docker compose -p laravel_$IDLE down
+            docker compose -p laravel_$IDLE up -d --build
+
+            ############################################
+            # 6️⃣ Prometheus health check (pre-migration)
+            ############################################
+            echo "📊 Checking Prometheus health endpoint"
+            sleep 10
+            curl -fs http://localhost:9100/metrics >/dev/null
+
+            docker exec laravel_${IDLE}_app php artisan app:health
+
+            ############################################
+            # 7️⃣ Backup database BEFORE migration
+            ############################################
+            echo "🗄️ Backing up database"
+            docker exec laravel_${IDLE}_db mysqldump \
+              -u${{ secrets.MYSQL_USER }} \
+              -p${{ secrets.MYSQL_ROOT_PASSWORD }} \
+              ${{ secrets.MYSQL_DATABASE }} > $BACKUP_FILE
+
+            ############################################
+            # 8️⃣ Run migrations
+            ############################################
+            docker exec laravel_${IDLE}_app php artisan migrate --force
+            docker exec laravel_${IDLE}_app php artisan optimize
+
+            ############################################
+            # 9️⃣ Switch traffic (zero downtime)
+            ############################################
+            ln -sfn laravel-$IDLE laravel-current
+
+            ############################################
+            # 🔟 Stop old environment
+            ############################################
+            docker compose -p laravel_$ACTIVE down
+
+            echo "✅ Deployment successful (DB safe + monitored)"
